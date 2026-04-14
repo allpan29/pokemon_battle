@@ -1,21 +1,9 @@
 import os
 import time
 import random
+from pokedex import POKEMON_DB, SPRITES
 
 PIKACHU_BACK = r""" [피카츄 뒷모습] """
-
-PIDGEY_FRONT = r""" [구구 앞모습] """
-RATTATA_FRONT = r""" [꼬렛 앞모습] """
-CATERPIE_FRONT = r""" [캐터피 앞모습] """
-MAGIKARP_FRONT = r""" [잉어킹 앞모습] """
-
-# --- 야생 포켓몬 데이터베이스 (도감) ---
-WILD_POKEMON_DATA = [
-    ("구구", "비행", 55, 45, 35, 50, PIDGEY_FRONT, [("바람일으키기", 40, "비행"), ("몸통박치기", 40, "노말")]),
-    ("꼬렛", "노말", 50, 56, 35, 72, RATTATA_FRONT, [("필살앞니", 80, "노말"), ("전광석화", 40, "노말")]),
-    ("캐터피", "벌레", 45, 30, 35, 45, CATERPIE_FRONT, [("몸통박치기", 40, "노말"), ("벌레먹기", 60, "벌레")]),
-    ("잉어킹", "물", 40, 10, 55, 80, MAGIKARP_FRONT, [("튀어오르기", 0, "노말"), ("몸통박치기", 40, "노말")])
-]
 
 TYPE_CHART = {
     "노말": {"바위": 0.5, "고스트": 0.0, "강철": 0.5},
@@ -67,7 +55,7 @@ def calculate_damage(attacker, defender, move_power, move_type):
     # 자속 보정 (STAB)
     stab = 1.5 if move_type == attacker.p_type else 1.0
     
-    # 전달해주신 공식 적용
+    # 데미지 계산 공식 적용
     level_factor = (attacker.level * 2) / 5 + 2
     random_factor = random.uniform(0.85, 1.0)
     
@@ -92,18 +80,20 @@ def render(player, enemy, message=""):
     print("-" * 70)
 
 def battle(player_poka):
-    # --- 야생 포켓몬 랜덤 선택 로직 ---
-    wild_info = random.choice(WILD_POKEMON_DATA)
+    wild_id = random.choice(list(POKEMON_DB.keys()))
+    wild_info = POKEMON_DB[wild_id]
+    
+    # Pokemon 객체 생성 (도감 데이터를 클래스 인자에 맞게 매핑)
     wild_poka = Pokemon(
-        name=wild_info[0],
-        level=random.randint(18, 25),
-        p_type=wild_info[1],
-        hp=wild_info[2],
-        atk=wild_info[3],
-        def_stat=wild_info[4],
-        speed=wild_info[5],
-        sprite=wild_info[6],
-        moves=wild_info[7]
+        name=wild_info["name"],
+        level=random.randint(18, 25), # 야생 레벨 범위
+        p_type=wild_info["type"],
+        hp=wild_info["hp"],
+        atk=wild_info["atk"],
+        def_stat=wild_info["def"],
+        speed=wild_info["spd"],
+        sprite=SPRITES.get(wild_info["name"], f"[{wild_info['name']} 아트 준비 중]"),
+        moves=wild_info["moves"]
     )
     
     msg = f"앗! 야생의 {wild_poka.name}(이)가 나타났다!"
@@ -133,8 +123,12 @@ def battle(player_poka):
             dmg, eff = calculate_damage(atk, dfd, move[1], move[2])
             dfd.hp -= dmg
             msg = f"{atk.name}의 {move[0]}!"
-            if eff > 1.0: msg += " 효과가 굉장했다!"
-            elif eff < 1.0 and eff > 0: msg += " 효과가 별로인 듯..."
+            if eff > 1.0: 
+                msg += " 효과가 굉장했다!"
+            elif eff < 1.0 and eff > 0: 
+                msg += " 효과가 별로인 듯하다..."
+            elif eff == 0: 
+                msg += " 효과가 없는 듯하다..."
             
             render(player_poka, wild_poka, msg)
             time.sleep(1.2)
